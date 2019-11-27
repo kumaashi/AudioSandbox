@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "000_basic", "000_basic\000_
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "001_keyboardsynth", "001_keyboardsynth\001_keyboardsynth.vcxproj", "{DC69E523-AAAA-460E-B39C-F4DC029A8E60}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "002_sampler", "002_sampler\002_sampler.vcxproj", "{140938F4-0624-4208-94D4-4E09188D299E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -31,6 +33,14 @@ Global
 		{DC69E523-AAAA-460E-B39C-F4DC029A8E60}.Release|x64.Build.0 = Release|x64
 		{DC69E523-AAAA-460E-B39C-F4DC029A8E60}.Release|x86.ActiveCfg = Release|Win32
 		{DC69E523-AAAA-460E-B39C-F4DC029A8E60}.Release|x86.Build.0 = Release|Win32
+		{140938F4-0624-4208-94D4-4E09188D299E}.Debug|x64.ActiveCfg = Debug|x64
+		{140938F4-0624-4208-94D4-4E09188D299E}.Debug|x64.Build.0 = Debug|x64
+		{140938F4-0624-4208-94D4-4E09188D299E}.Debug|x86.ActiveCfg = Debug|Win32
+		{140938F4-0624-4208-94D4-4E09188D299E}.Debug|x86.Build.0 = Debug|Win32
+		{140938F4-0624-4208-94D4-4E09188D299E}.Release|x64.ActiveCfg = Release|x64
+		{140938F4-0624-4208-94D4-4E09188D299E}.Release|x64.Build.0 = Release|x64
+		{140938F4-0624-4208-94D4-4E09188D299E}.Release|x86.ActiveCfg = Release|Win32
+		{140938F4-0624-4208-94D4-4E09188D299E}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

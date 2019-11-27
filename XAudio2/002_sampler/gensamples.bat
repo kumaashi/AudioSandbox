@@ -1,0 +1,3 @@
+copy /b *.wav ..\samples
+
+
