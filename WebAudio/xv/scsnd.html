@@ -1,0 +1,70 @@
+<script>
+
+var buffer_size  = 16384; //power 2
+var divide       = 10;
+var finetune     = 512.0;
+var gain         = 0.01;
+var cutoff       = 1000; //hz
+
+//https://www.youtube.com/watch?v=oFXMxIvZeMk
+var score =
+[
+	0, 12, 11 - 0, 12, 16, 12, 11 - 0, 12,
+	0, 12, 11 - 1, 12, 16, 12, 11 - 1, 12,
+	0, 12, 11 - 2, 12, 16, 12, 11 - 2, 12,
+	0, 12, 11 - 3, 12, 16, 12, 11 - 3, 12,
+];
+
+//webaudio.
+var audio        = new (window.webkitAudioContext || window.AudioContext);
+var scriptproc   = audio.createScriptProcessor(buffer_size);
+var filter       = audio.createBiquadFilter();
+var sample_pnote = audio.sampleRate / divide;
+var basepitch    = finetune / audio.sampleRate;
+
+scriptproc.onaudioprocess = audiohandler;
+scriptproc.connect(filter);
+
+filter.type      = 0;
+filter.frequency.value = cutoff;
+filter.connect(audio.destination);
+
+console.log(audio.sampleRate, sample_pnote, finetune);
+
+var voice = function() {
+	this.ph = 0;
+	this.acc = 0;
+	this.on = function(note) {
+		//http://ja.wikipedia.org/wiki/%E5%B9%B3%E5%9D%87%E5%BE%8B
+		this.acc = Math.pow(2.0, note / 12.0) * basepitch;
+	}
+
+	this.get = function() {
+		this.ph += this.acc;
+		var g0 = Math.sin(this.ph * 3.141592 * 2);
+		return g0 > 0.0 ? -1 : 1;
+	}
+};
+vo = new voice();
+
+var remain = 0;
+var index  = 0;
+function audiohandler(event) {
+	var outL = event.outputBuffer.getChannelData(0);
+	var outR = event.outputBuffer.getChannelData(1);
+	for(var i = 0 ; i < outL.length; i++) {
+		remain--;
+		if(remain <= 0) {
+			var note = (score[index % score.length]);
+			vo.on(note);
+			remain = sample_pnote;
+			index++;
+			console.log(note);
+		}
+		var out  = vo.get()
+		outL[i]  = out * gain;
+		outR[i]  = outL[i];
+	}
+}
+
+</script>

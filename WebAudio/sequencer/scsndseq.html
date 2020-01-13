@@ -1,0 +1,482 @@
+<script>
+
+var PI = 3.1415926
+var select_voice = 0;
+
+var voice = function() {
+	var self = this;
+
+	self.monitor = [];
+	self.monitor_max = 2048;
+	self.monitor_index = 0 ;
+
+	self.index = 0;
+	self.ph    = 0;
+	self.acc   = 0;
+	self.vol   = 0;
+
+	self.random_adsr = function() {
+		self.adsr  =
+		[
+			Math.floor(Math.random() * 0x2000),
+			Math.floor(Math.random() * 0x20000),
+			Math.floor(Math.random() * 0x200),
+			Math.floor(Math.random() * 0x40000)
+		];
+
+	}
+	self.random_adsr();
+
+	self.on = function(note) {
+		self.acc = Math.pow(2.0, note / 12.0) * player.basepitch;
+		self.vol = 0;
+		self.index = 0 ;
+		//self.ph = 0;
+	}
+
+	self.get = function() {
+		var rn = 0;//(Math.random() * 2 - 1) * 0.0002;
+		self.ph += self.acc + rn;
+		var det = 1.0;
+		var ret = 0 ;
+		for(var i = 0 ; i < 3; i++) {
+			var g0 = Math.sin(self.ph * PI * 2 * det);
+			ret *= (g0 > 0.5 ? -1 : 1);
+			ret *= ((self.ph - parseInt(self.ph)) * 2.0) - 1.0;
+			ret -= g0;
+			//det += 0.005;
+			det *= 1.006;
+		}
+		ret *= 0.5 + rn;
+
+		//create env
+		var sum = 0;
+		var kv  = 0;
+		var table = [1.0, -0.5, 0.0, -0.5];
+		self.index++;
+		for(var i = 0; i < 4; i++) {
+			sum += self.adsr[i];
+			if(self.index <= sum) {
+				kv = table[i] / self.adsr[i]; //u-
+				break;
+			}
+		}
+
+		self.vol *= 0.9999999999;
+		self.vol += kv;
+
+		//monitor
+		self.monitor[self.monitor_index % self.monitor_max] = self.vol * ret;
+		self.monitor_index++;
+
+		//owari
+		return self.vol * ret;
+	}
+}
+
+
+var sequencer = function() {
+	var self = this;
+
+	self.remain = 0;
+	self.index  = 0;
+	self.allindex  = 0;
+	self.tempo  = 5000;
+	self.vo     = [];
+	self.track  = [];
+	self.isplay = false; //fordebug
+	self.reset  = function() {
+		remain = 0;
+		index  = 0;
+	}
+
+	self.create = function(num) {
+		self.reset();
+		for(var i = 0 ; i < num; i++)
+			self.vo[i] = new voice;
+		self.voice_num = num;
+	}
+
+	self.setup = function(i, trk) {
+		self.track[i] = trk;
+	}
+
+	self.get = function() {
+		var maxloop = self.track[0].length;
+		if(self.isplay) {
+			self.remain--;
+			self.allindex++;
+			if(self.remain < 0) {
+				for(var i = 0 ; i < self.vo.length; i++) {
+					if(self.track[i]) {
+						var note = self.track[i][self.index];
+
+						if(note > 0) {
+							self.vo[i].on(note);
+						}
+					}
+				}
+				self.remain = self.tempo;
+				self.index++;
+				if(self.index >= 32) {
+					self.index = 0;
+					self.allindex = 0;
+				}
+			}
+		}
+
+		//create voice.
+		var ret = 0;
+		for(var i = 0 ; i < self.vo.length; i++) {
+			ret += self.vo[i].get();
+		}
+		return ret;
+	}
+}
+
+
+var score =
+[
+[ 0+12,0,0,0,0,0,0,0,  0+11,0,0,0,0,0,0,0,   0+9,0,0,0,0,0,0,0,  0+11,0,0,0,0,0,0,0,],
+	[ 7+12,0,0,0,0,0,0,0,  7+11,0,0,0,0,0,0,0,   7+9,0,0,0,0,0,0,0,  7+11,0,0,0,0,0,0,0,],
+	[11+12,0,0,0,0,0,0,0, 11+10,0,0,0,0,0,0,0,  11+8,0,0,0,0,0,0,0, 11+10,0,0,0,0,0,0,0,],
+	[16+12,0,0,0,0,0,0,0, 16+10,0,0,0,0,0,0,0,  16+8,0,0,0,0,0,0,0, 16+10,0,0,0,0,0,0,0,],
+	[ 0+12+12,0,0,0,0,0,0,0,  0+11+12,0,0,0,0,0,0,0,   0+9+12,0,0,0,0,0,0,0,  0+11+12,0,0,0,0,0,0,0,],
+	[ 7+12+12,0,0,0,0,0,0,0,  7+11+12,0,0,0,0,0,0,0,   7+9+12,0,0,0,0,0,0,0,  7+11+12,0,0,0,0,0,0,0,],
+	[11+12+12,0,0,0,0,0,0,0, 11+10+12,0,0,0,0,0,0,0,  11+8+12,0,0,0,0,0,0,0, 11+10+12,0,0,0,0,0,0,0,],
+	[16+12+12,0,0,0,0,0,0,0, 16+10+12,0,0,0,0,0,0,0,  16+8+12,0,0,0,0,0,0,0, 16+10+12,0,0,0,0,0,0,0,],
+	]; 
+
+
+
+var Player = function() {
+	var self = this;
+	self.num  = 8;
+
+	this.init = function(bsize) {
+		self.monitor_buffer = [];
+		self.buffer_size  = bsize;//; //power 2
+		self.divide       = 10;
+		self.finetune     = 50.0;
+		self.gain         = 0.1;
+		self.cutoff       = 8000; //hz
+		self.audio        = new (window.webkitAudioContext || window.AudioContext);
+		self.scriptproc   = self.audio.createScriptProcessor(self.buffer_size);
+		self.monitorproc  = self.audio.createScriptProcessor(self.buffer_size);
+		self.analyser     = self.audio.createAnalyser();
+		self.filter       = self.audio.createBiquadFilter();
+		self.sample_pnote = self.audio.sampleRate / self.divide;
+		self.basepitch    = self.finetune / self.audio.sampleRate;
+
+		//sequencer
+		self.seq          = new sequencer();
+		self.is_play      = true;
+		self.seq.create(self.num);
+		for(var i = 0; i < self.num ; i++) {
+			self.seq.setup(i, score[i]);
+		}
+		self.seq.tempo = parseInt(self.sample_pnote * 3);
+
+		self.scriptproc.onaudioprocess = audiohandler;
+		self.scriptproc.connect(self.filter);
+		self.filter.type = 0;
+		self.filter.frequency.value = self.cutoff;
+		self.filter.connect(self.monitorproc);
+		self.filter.connect(self.audio.destination);
+		self.monitorproc.onaudioprocess = monitorhandler;
+		self.monitorproc.connect(self.filter);
+
+		function audiohandler(event) {
+			var outL = event.outputBuffer.getChannelData(0);
+			var outR = event.outputBuffer.getChannelData(1);
+			for(var i = 0 ; i < outL.length; i++) {
+				outL[i] = outR[i] = 0;
+				var out = self.seq.get() * self.gain;
+				outL[i] = out;
+				outR[i] = outL[i];
+			}
+		}
+
+		function monitorhandler(event) {
+			var outL = event.inputBuffer.getChannelData(0);
+			var outR = event.inputBuffer.getChannelData(1);
+			var monitor       = [];
+			var monitor_index = 0;
+			for(var i = 0 ; i < outL.length; i++) {
+				self.monitor_buffer[i] = (outL[i] + outR[i]) * 0.5;
+			}
+		}
+
+		console.log(self.audio.sampleRate, self.sample_pnote, self.finetune);
+	}
+}
+var player = new Player;
+
+
+//--------------------------------------------------------------------
+// handle
+//--------------------------------------------------------------------
+//click play/stop
+function handle_play(handle) {
+	if(player.seq.isplay == false) {
+		player.seq.isplay = true;
+		handle.value = "stop";
+	} else {
+		player.seq.isplay = false;
+		handle.value = "play";
+	}
+}
+
+
+//--------------------------------------------------------------------
+// monitor wave
+//--------------------------------------------------------------------
+function write_html() {
+	document.write('<html><head><style>');
+	document.write('canvas {border:3px solid black;}');
+	document.write('</style></head><body bgcolor=cadetblue>');
+
+	
+	//master
+	document.write('<canvas id="monitor_master" width=0 height=0></canvas>');
+	document.write('</br>');
+
+	//each channel(draft)
+	for(var j = 0 ; j < player.num; j++) {
+		if((j % 4) == 0) document.write('</br>');
+		document.write('<canvas id="monitor' + j + '" width=0 height=0></canvas>');
+	}
+	document.write('</br>');
+
+	
+	//play button
+	document.write('<input type="button" id="play_button" value="play" onClick="handle_play(this)">');
+	document.write('</br>');
+	//--------------------------------------------------------------------
+	// monitor adsr
+	//--------------------------------------------------------------------
+	for(var j = 0 ; j < player.num; j++) {
+		if((j % 4) == 0) document.write('</br>');
+		document.write('<canvas id="adsr' + j + '" width=0 height=0></canvas>');
+	}
+	document.write('</br>');
+	document.write('</br>');
+
+	// seq
+	document.write('<canvas id="roll" width=0 height=0></canvas>');
+	document.write('</br>');
+
+
+
+	//end
+	document.write('</body></html>');
+}
+
+
+function draw_roll(canvas, parent, seq) {
+	canvas.width  = 32 * 16;
+	canvas.height = 480;
+	var context = canvas.getContext('2d');
+	var seqpos  = (parent.allindex/parent.tempo) * 16;
+
+	//play data
+	var temp = context.strokeStyle;
+	context.beginPath();
+	context.lineWidth = 12;
+	context.strokeStyle = 'rgba(0,0,0, 0.5)';
+	context.moveTo(seqpos, 0);
+	context.lineTo(seqpos, canvas.height);
+	context.stroke();
+	context.strokeStyle = temp;
+
+	//ho
+	context.beginPath();
+	context.lineWidth = 0.5;
+	for(var i = 1; i < canvas.width / 16; i++) {
+		context.moveTo(16 * i, 0);
+		context.lineTo(16 * i, canvas.height);
+	}
+	context.stroke();
+
+	//ve
+	context.beginPath();
+	context.lineWidth = 0.5;
+	for(var i = 1; i < canvas.height / 10; i++) {
+		context.moveTo(0, i * 10 - 5);
+		context.lineTo(canvas.width, i * 10 - 5);
+	}
+	context.stroke();
+
+	//note data
+	context.beginPath();
+	context.lineWidth = 10;
+	for(var i = 0; i < seq.length; i++) {
+		var note = seq[i];
+		if(note != 0) {
+			context.moveTo(16 * (i + 0), canvas.height - note * 10);
+			context.lineTo(16 * (i + 1), canvas.height - note * 10);
+		}
+	}
+	context.stroke();
+}
+
+function draw_monitor_master_wave(canvas, data) {
+	canvas.width  = 32 * 16;
+	canvas.height = 70;
+	var context = canvas.getContext('2d');
+	var hcenter = canvas.height / 2;
+	var mult = Math.floor(data.length / canvas.width);
+	context.beginPath();
+	context.moveTo(0, hcenter);
+	for(var i = 1; i < canvas.width; i++)
+		context.lineTo(i, hcenter + (data[i * mult] * hcenter) * 3.0);
+	context.stroke();
+}
+
+function draw_monitor_wave(canvas, data, select) {
+	canvas.width  = 124;
+	canvas.height = 40;
+	var context = canvas.getContext('2d');
+	var hcenter = canvas.height / 2;
+	var mult = Math.floor(data.length / canvas.width);
+	var temp = context.strokeStyle;
+	if(select == true) {
+		var temp = context.fillStyle;
+		context.fillStyle = 'rgba(0,0,128, 0.5)';
+		context.fillRect(0, 0, canvas.width, canvas.height);
+	}
+
+	context.beginPath();
+	context.moveTo(0, hcenter);
+	for(var i = 1; i < canvas.width; i++)
+		context.lineTo(i, hcenter + (data[i * mult] * hcenter));
+	context.stroke();
+}
+
+function draw_adsr_wave(canvas, data) {
+	canvas.width  = 124;
+	canvas.height = 20;
+	var context = canvas.getContext('2d');
+	var hcenter = canvas.height / 2;
+	var total = 0;
+	var mult = Math.floor(canvas.width / 4);
+	var table = [0, hcenter, hcenter, canvas.height];
+	var sumx  = 0;
+	context.beginPath();
+	context.moveTo(0, canvas);
+	context.lineTo(sumx, canvas.height);
+	for(var i = 0; i < data.length; i++) total += data[i];
+	for(var i = 0; i < data.length; i++) {
+		sumx += canvas.width / (total / data[i]);
+		context.lineTo(sumx, table[i]);
+	}
+	context.stroke();
+}
+
+
+//Create AnimationFrame
+var rAF = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame;
+
+//-------------------------------------------------------------------
+//-------------------------------------------------------------------
+function handler_monitor_master(event) {
+}
+
+//-------------------------------------------------------------------
+//hand@event
+//-------------------------------------------------------------------
+function handler_monitor(event) {
+	for(var i = 0 ; i < player.num; i++) {
+		if(event.target.id == ('monitor' + i) ) {
+			player.seq.vo[i].random_adsr();
+			select_voice = i;
+			break;
+		}
+	}
+}
+
+
+//-------------------------------------------------------------------
+//handle roll canvas
+//-------------------------------------------------------------------
+function handler_mouse_click(e) {
+	var rect = e.target.getBoundingClientRect();
+	var x = e.clientX - rect.left;
+	var y = e.clientY - rect.top;
+
+	var trackX = parseInt(x / 16);
+	var trackY = parseInt( (480 - y + 5) / 10);
+	console.log(trackX, trackY);
+	var prev_note = player.seq.track[select_voice][trackX];
+	if(player.seq.track[select_voice][trackX] != 0 && prev_note == trackY) {
+		player.seq.track[select_voice][trackX] = 0;
+	} else {
+		player.seq.track[select_voice][trackX] = trackY;
+		player.seq.vo[select_voice].on(trackY);
+	}
+}
+
+function handler_roll(e) {
+	handler_mouse_click(e);
+}
+
+function handler_keydown(e) {
+	if(event.keyCode == 32) //space
+	{
+		handle_play(document.getElementById('play_button'));
+	}
+}
+
+//todo ui load 
+//todo play for each track
+//mute 
+//soro 
+// 
+
+document.ondblclick = function(evt) {
+	if (window.getSelection)
+		window.getSelection().removeAllRanges();
+	else if (document.selection)
+		document.selection.empty();
+}
+
+
+//-----------------------------------------------------------
+//Update
+//-----------------------------------------------------------
+function update() {
+	var canvas = document.getElementById('monitor_master');
+	draw_monitor_master_wave(canvas, player.monitor_buffer);
+	for(var i = 0 ; i < player.num; i++) {
+		var canvas = document.getElementById('monitor' + i);
+		draw_monitor_wave(canvas, player.seq.vo[i].monitor, (i == select_voice) ? true : false);
+	}
+
+	for(var i = 0 ; i < player.num; i++) {
+		draw_adsr_wave(document.getElementById('adsr' + i), player.seq.vo[i].adsr);
+	}
+
+	draw_roll(document.getElementById('roll'), player.seq, player.seq.track[select_voice]);
+	rAF(update);
+}
+
+//-----------------------------------------------------------
+// init
+//-----------------------------------------------------------
+function init_handler() {
+	document.getElementById('monitor_master').addEventListener('click', handler_monitor_master, false);
+	for(var i = 0 ; i < player.num; i++) 
+		document.getElementById('monitor' + i).addEventListener('click', handler_monitor, false);
+	document.getElementById('roll').addEventListener('click', handler_roll, false);
+	document.onkeydown = handler_keydown;
+}
+
+
+//init
+write_html();
+player.init(1024);
+init_handler();
+
+//update
+rAF(update);
+</script>
