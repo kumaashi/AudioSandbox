@@ -1,1 +1,1 @@
-cl main.cpp /Ox /GS- /EHsc  
+cl main.cpp /Ox /GS- /EHsc   /nologo

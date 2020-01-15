@@ -97,10 +97,10 @@ update_audio(float *buf, int count, int ch)
 {
 	struct delay {
 		int idx = 0;
-		double b0[0x3000];
+		double b0[20 * 1024];
 		void update(double x) {
 			b0[idx] = x;
-			idx = (idx + 1) % 0x3000;
+			idx = (idx + 1) % (20 * 1024);
 		}
 		double get() {
 			return b0[idx];
@@ -128,10 +128,10 @@ update_audio(float *buf, int count, int ch)
 			dvol = 0.99;
 		}
 		void noteon(int note) {
-			dphase = pow(2, (double(note) / 12.0)) / 512.0f;
+			dphase = pow(2, (double(note) / 12.0)) / 1024.0f;
 			count = 0;
 			vol = 1.0;
-			dvol = 0.9995;
+			dvol = 0.9997;
 		}
 		double get() {
 			double value = 0;
@@ -141,7 +141,7 @@ update_audio(float *buf, int count, int ch)
 				value += sin(ph * 3.141592653 + 0.5) > 0.75 ? 1.0 : -1.0;
 				value += (ph - floor(ph)) * 2.0 - 1.0;
 				value += sin(ph * 3.141592653 + 0.75);
-				dph *= 0.501;
+				dph *= 0.504;
 			}
 			
 			double kr = frand() * 0.002;
@@ -153,8 +153,10 @@ update_audio(float *buf, int count, int ch)
 			
 			value = b0.get(value, 0.5);
 			
+			/*
 			value += d.get() * 0.5;
 			d.update(value);
+			*/
 			
 			
 			return value;
@@ -162,31 +164,31 @@ update_audio(float *buf, int count, int ch)
 	};
 	bar bars[4] = {
 		{
-			64, 0x30,
-			0, 0, 1, true,
+			40, 0x30,
+			0, 0, 0, true,
 			{
 				{0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00},
 				{0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00},
 			}
 		},
 		{
-			64, 0x30,
-			1, 0, 0, true,
+			40, 0x32,
+			0, 0, 0, true,
 			{
 				{0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00},
 				{0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00},
 			}
 		},
 		{
-			64, 0x30,
-			2, 0, 1, true,
+			40, 0x32,
+			2, 0, 0, true,
 			{
 				{0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00},
 				{0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00},
 			}
 		},
 		{
-			64, 0x30,
+			40, 0x32,
 			3, 0, 0, true,
 			{
 				{0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00,  0x00, 0x00, 0x00, 0x00},
@@ -251,14 +253,12 @@ update_audio(float *buf, int count, int ch)
 			value += vch.get();
 		}
 
-		/*
 		static delay ld;
 		static delay rd;
 		double L = (value + ld.get());
 		double R = (value + rd.get());
-		ld.update(R * 0.7);
-		rd.update(L * 0.5);
-		*/
+		ld.update(R * 0.17);
+		rd.update(L * 0.15);
 		
 		buf[i + 0] = L * 0.02;
 		buf[i + 1] = R * 0.02;
