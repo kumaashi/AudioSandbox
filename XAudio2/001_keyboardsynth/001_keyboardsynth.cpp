@@ -162,7 +162,7 @@ int main() {
 			}
 			auto vol = env.GetVolume();
 			data *= vol * vol;
-			buffer = buffer + (data - buffer) * (0.333333 + lfo_value);
+			buffer = buffer + (data - buffer) * (0.333333 + lfo_value * 0.1);
 			vWaveData.push_back(buffer * Lv); //L
 			vWaveData.push_back(buffer * Rv); //R
 		}
